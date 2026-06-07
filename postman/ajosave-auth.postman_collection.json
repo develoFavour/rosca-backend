@@ -27,6 +27,18 @@
     {
       "key": "inviteCode",
       "value": ""
+    },
+    {
+      "key": "cycleId",
+      "value": ""
+    },
+    {
+      "key": "paymentReference",
+      "value": ""
+    },
+    {
+      "key": "contributionId",
+      "value": ""
     }
   ],
   "item": [
@@ -469,8 +481,182 @@
     },
     {
       "name": "Contributions",
-      "description": "Contribution and cycle engine endpoints will be added in Phase 3.",
-      "item": []
+      "description": "Paystack-backed contribution payments, current cycle status, and contribution history.",
+      "item": [
+        {
+          "name": "Initialize Contribution Payment",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/contributions/initialize-payment",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"groupId\": \"{{groupId}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.payment) {",
+                  "  pm.collectionVariables.set('paymentReference', json.data.payment.reference);",
+                  "}",
+                  "if (json.data && json.data.cycle) {",
+                  "  pm.collectionVariables.set('cycleId', json.data.cycle.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Contribution Payment",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/contributions/verify-payment",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reference\": \"{{paymentReference}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.contribution) {",
+                  "  pm.collectionVariables.set('contributionId', json.data.contribution.id);",
+                  "}",
+                  "if (json.data && json.data.cycle) {",
+                  "  pm.collectionVariables.set('cycleId', json.data.cycle.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Contribution Status",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/contributions/status/{{groupId}}"
+          }
+        },
+        {
+          "name": "List Group Contributions",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/contributions/group/{{groupId}}?page=1&limit=20"
+          }
+        },
+        {
+          "name": "List Cycle Contributions",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/contributions/cycle/{{cycleId}}"
+          }
+        },
+        {
+          "name": "List My Contributions",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/contributions/my/{{groupId}}"
+          }
+        },
+        {
+          "name": "Confirm Contribution",
+          "request": {
+            "method": "PATCH",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/contributions/{{contributionId}}/confirm"
+          }
+        }
+      ]
     },
     {
       "name": "Payouts",

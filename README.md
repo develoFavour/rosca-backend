@@ -89,4 +89,5 @@ This protects both against noisy clients from one IP and targeted brute-force at
 - Phase tracker: `PHASE_CHECKLIST.md`
 - Frontend auth notes: `docs/FRONTEND_AUTH_INTEGRATION.md`
 - Frontend group notes: `docs/FRONTEND_GROUP_INTEGRATION.md`
+- Frontend contribution notes: `docs/FRONTEND_CONTRIBUTION_INTEGRATION.md`
 - Postman auth collection: `postman/ajosave-auth.postman_collection.json`

@@ -414,6 +414,117 @@ export const openApiSpec = {
           403: { description: 'User is not a member' }
         }
       }
+    },
+    '/contributions/initialize-payment': {
+      post: {
+        tags: ['Contributions'],
+        summary: 'Initialize Paystack payment for the current cycle contribution',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/InitializeContributionPaymentRequest' },
+              example: {
+                groupId: '665f1f1f1f1f1f1f1f1f1f1f'
+              }
+            }
+          }
+        },
+        responses: {
+          201: { description: 'Paystack checkout initialized' },
+          400: { description: 'Group/cycle is not open for contributions' },
+          409: { description: 'Member has already contributed for this cycle' }
+        }
+      }
+    },
+    '/contributions/verify-payment': {
+      post: {
+        tags: ['Contributions'],
+        summary: 'Verify Paystack reference and fulfill contribution',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/VerifyContributionPaymentRequest' },
+              example: {
+                reference: 'AJO-ABC123-DEF456-GHI789-001122'
+              }
+            }
+          }
+        },
+        responses: {
+          200: { description: 'Payment verified and contribution recorded' },
+          400: { description: 'Payment is not successful or amount mismatch' },
+          404: { description: 'Payment transaction not found' }
+        }
+      }
+    },
+    '/contributions/group/{groupId}': {
+      get: {
+        tags: ['Contributions'],
+        summary: 'List contributions for a group',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { $ref: '#/components/parameters/GroupId' },
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } }
+        ],
+        responses: {
+          200: { description: 'Group contributions retrieved' },
+          403: { description: 'User is not a group member' }
+        }
+      }
+    },
+    '/contributions/cycle/{cycleId}': {
+      get: {
+        tags: ['Contributions'],
+        summary: 'List contributions for a cycle',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/CycleId' }],
+        responses: {
+          200: { description: 'Cycle contributions retrieved' },
+          403: { description: 'User is not a group member' }
+        }
+      }
+    },
+    '/contributions/my/{groupId}': {
+      get: {
+        tags: ['Contributions'],
+        summary: 'List authenticated user contributions in a group',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/GroupId' }],
+        responses: {
+          200: { description: 'User contributions retrieved' },
+          403: { description: 'User is not a group member' }
+        }
+      }
+    },
+    '/contributions/{contribId}/confirm': {
+      patch: {
+        tags: ['Contributions'],
+        summary: 'Admin manually confirms a pending contribution',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/ContributionId' }],
+        responses: {
+          200: { description: 'Contribution confirmed' },
+          403: { description: 'Only group admin can confirm' },
+          404: { description: 'Contribution not found' }
+        }
+      }
+    },
+    '/contributions/status/{groupId}': {
+      get: {
+        tags: ['Contributions'],
+        summary: 'Get current cycle payment status snapshot',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/GroupId' }],
+        responses: {
+          200: { description: 'Contribution status retrieved' },
+          403: { description: 'User is not a group member' }
+        }
+      }
     }
   },
   components: {
@@ -427,6 +538,24 @@ export const openApiSpec = {
     parameters: {
       GroupId: {
         name: 'groupId',
+        in: 'path',
+        required: true,
+        schema: {
+          type: 'string',
+          pattern: '^[a-f\\d]{24}$'
+        }
+      },
+      CycleId: {
+        name: 'cycleId',
+        in: 'path',
+        required: true,
+        schema: {
+          type: 'string',
+          pattern: '^[a-f\\d]{24}$'
+        }
+      },
+      ContributionId: {
+        name: 'contribId',
         in: 'path',
         required: true,
         schema: {
@@ -512,6 +641,20 @@ export const openApiSpec = {
         required: ['inviteCode'],
         properties: {
           inviteCode: { type: 'string', minLength: 6, maxLength: 12 }
+        }
+      },
+      InitializeContributionPaymentRequest: {
+        type: 'object',
+        required: ['groupId'],
+        properties: {
+          groupId: { type: 'string', pattern: '^[a-f\\d]{24}$' }
+        }
+      },
+      VerifyContributionPaymentRequest: {
+        type: 'object',
+        required: ['reference'],
+        properties: {
+          reference: { type: 'string', minLength: 8, maxLength: 120 }
         }
       }
     }
