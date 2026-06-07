@@ -48,8 +48,8 @@ export const leaveGroup = asyncHandler(async (req: Request, res: Response) => {
 
 export const startGroup = asyncHandler(async (req: Request, res: Response) => {
   const { groupId } = (req.validated as { params: GroupIdParams }).params;
-  const group = await groupService.startGroup(currentUserId(req), groupId);
-  return sendSuccess(res, 200, 'Group started successfully.', { group });
+  const result = await groupService.startGroup(currentUserId(req), groupId);
+  return sendSuccess(res, 200, 'Group started successfully.', result);
 });
 
 export const listMembers = asyncHandler(async (req: Request, res: Response) => {

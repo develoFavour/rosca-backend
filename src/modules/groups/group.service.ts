@@ -2,6 +2,8 @@ import { Types } from 'mongoose';
 import { badRequest, conflict, forbidden, notFound } from '../../common/http/api-error';
 import { generateInviteCode } from '../../common/utils/invite-code';
 import { UserModel } from '../auth/user.model';
+import { createCycleForGroup, serializeCycle } from '../cycles/cycle.service';
+import { lockRotationOrder } from '../cycles/rotation.service';
 import { GroupActivityModel, type GroupActivityType } from './group-activity.model';
 import { GroupModel, type GroupDocument, type GroupMember } from './group.model';
 import type { ActivityQuery, CreateGroupInput, UpdateGroupInput } from './group.schemas';
@@ -256,16 +258,23 @@ export const startGroup = async (userId: string, groupId: string) => {
     throw badRequest('Group must be full before it can be started.');
   }
 
+  lockRotationOrder(group);
   group.status = 'active';
   group.startDate = new Date();
   await group.save();
 
+  const cycle = await createCycleForGroup(group, 1);
+
   await createActivity(group, userId, 'group_started', `Group "${group.name}" was started.`, {
     memberCount: group.members.length,
-    rotationOrder: group.rotationOrder
+    rotationOrder: group.rotationOrder,
+    cycleId: cycle._id.toString()
   });
 
-  return serializeGroup(group);
+  return {
+    group: serializeGroup(group),
+    cycle: serializeCycle(cycle)
+  };
 };
 
 export const listMembers = async (userId: string, groupId: string) => {
