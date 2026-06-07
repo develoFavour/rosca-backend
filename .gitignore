@@ -1,0 +1,14 @@
+node_modules/
+.npm-cache/
+.env
+coverage/
+dist/
+logs/
+*.log
+openapi.generated.json
+PHASE_CHECKLIST.md
+GUIDELINES.md
+TECHNICAL_DECISIONS.md
+PHASE_CHECKLIST.md
+GUIDLINES.md
+TECHNICAL_DECISIONS.md
