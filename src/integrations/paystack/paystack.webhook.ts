@@ -4,6 +4,7 @@ import { env } from '../../config/env';
 import { logger } from '../../config/logger';
 import type { PaystackWebhookEvent } from './paystack.types';
 import { verifyPaystackTransaction } from './paystack.client';
+import { fulfillContributionPayment } from '../../modules/contributions/contribution.service';
 
 const PAYSTACK_WEBHOOK_IPS = new Set([
   '52.31.139.75',
@@ -54,13 +55,15 @@ paystackWebhookRouter.post('/', async (req, res) => {
 
   if (event.event === 'charge.success') {
     const transaction = await verifyPaystackTransaction(event.data.reference);
+    const result = await fulfillContributionPayment(transaction.reference, transaction);
+
     logger.info({
       reference: transaction.reference,
       status: transaction.status,
-      amount: transaction.amount
-    }, 'Verified Paystack charge.success webhook');
-
-    // Payment fulfillment will be wired during the Payments/Contributions phase.
+      amount: transaction.amount,
+      contributionId: result.contribution?.id,
+      alreadyFulfilled: result.alreadyFulfilled
+    }, 'Fulfilled Paystack charge.success webhook');
   }
 
   return res.sendStatus(200);
