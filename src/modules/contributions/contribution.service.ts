@@ -7,6 +7,7 @@ import { UserModel } from '../auth/user.model';
 import { closeCycleIfFullyPaid, getCurrentCycleForGroup, serializeCycle } from '../cycles/cycle.service';
 import { CycleModel, type CycleDocument } from '../cycles/cycle.model';
 import { GroupModel, type GroupDocument } from '../groups/group.model';
+import { notifyGroupMembers } from '../notifications/notification.service';
 import { PaymentTransactionModel, type PaymentTransactionDocument } from '../payments/payment-transaction.model';
 import { ContributionModel, type ContributionDocument } from './contribution.model';
 import type { PaginatedQuery } from './contribution.schemas';
@@ -207,7 +208,40 @@ export const fulfillContributionPayment = async (reference: string, providerData
   cycle.totalCollected += contribution.amount;
   cycle.contributions.push(contribution._id);
   await cycle.save();
+  await notifyGroupMembers({
+    group,
+    type: 'contribution_new',
+    eventName: 'contribution:new',
+    title: 'Contribution received',
+    message: 'A member contribution was confirmed.',
+    payload: {
+      groupId: group._id.toString(),
+      cycleId: cycle._id.toString(),
+      memberId: payment.user.toString(),
+      amount: contribution.amount,
+      status: contribution.status,
+      contributionId: contribution._id.toString()
+    }
+  });
+
+  const previousCycleStatus = cycle.status;
   const updatedCycle = await closeCycleIfFullyPaid(cycle);
+
+  if (previousCycleStatus !== 'closed' && updatedCycle.status === 'closed') {
+    await notifyGroupMembers({
+      group,
+      type: 'cycle_closed',
+      eventName: 'cycle:closed',
+      title: 'Cycle closed',
+      message: `Cycle ${updatedCycle.cycleNumber} is closed and ready for payout request.`,
+      payload: {
+        groupId: group._id.toString(),
+        cycleId: updatedCycle._id.toString(),
+        cycleNumber: updatedCycle.cycleNumber,
+        recipientId: updatedCycle.recipient.toString()
+      }
+    });
+  }
 
   return {
     payment: serializePayment(payment),
@@ -315,7 +349,41 @@ export const confirmContribution = async (userId: string, contributionId: string
   await contribution.save();
 
   const cycle = await CycleModel.findById(contribution.cycle);
-  if (cycle) await closeCycleIfFullyPaid(cycle);
+  if (cycle) {
+    await notifyGroupMembers({
+      group,
+      type: 'contribution_confirmed',
+      eventName: 'contribution:confirmed',
+      title: 'Contribution confirmed',
+      message: 'A contribution was manually confirmed by the group admin.',
+      payload: {
+        contributionId: contribution._id.toString(),
+        groupId: group._id.toString(),
+        cycleId: cycle._id.toString(),
+        memberId: contribution.member.toString(),
+        confirmedBy: userId
+      }
+    });
+
+    const previousCycleStatus = cycle.status;
+    const updatedCycle = await closeCycleIfFullyPaid(cycle);
+
+    if (previousCycleStatus !== 'closed' && updatedCycle.status === 'closed') {
+      await notifyGroupMembers({
+        group,
+        type: 'cycle_closed',
+        eventName: 'cycle:closed',
+        title: 'Cycle closed',
+        message: `Cycle ${updatedCycle.cycleNumber} is closed and ready for payout request.`,
+        payload: {
+          groupId: group._id.toString(),
+          cycleId: updatedCycle._id.toString(),
+          cycleNumber: updatedCycle.cycleNumber,
+          recipientId: updatedCycle.recipient.toString()
+        }
+      });
+    }
+  }
 
   return serializeContribution(contribution);
 };
