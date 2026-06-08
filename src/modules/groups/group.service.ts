@@ -6,6 +6,7 @@ import { createCycleForGroup, serializeCycle } from '../cycles/cycle.service';
 import { lockRotationOrder } from '../cycles/rotation.service';
 import { GroupActivityModel, type GroupActivityType } from './group-activity.model';
 import { GroupModel, type GroupDocument, type GroupMember } from './group.model';
+import { notifyGroupMembers } from '../notifications/notification.service';
 import type { ActivityQuery, CreateGroupInput, UpdateGroupInput } from './group.schemas';
 
 const toObjectId = (id: string): Types.ObjectId => new Types.ObjectId(id);
@@ -210,6 +211,19 @@ export const joinGroup = async (userId: string, inviteCode: string) => {
     currentMemberCount: group.members.length
   });
 
+  await notifyGroupMembers({
+    group,
+    type: 'member_joined',
+    eventName: 'member:joined',
+    title: 'New member joined',
+    message: 'A new member joined the group.',
+    payload: {
+      groupId: group._id.toString(),
+      userId,
+      currentMemberCount: group.members.length
+    }
+  });
+
   return serializeGroup(group);
 };
 
@@ -269,6 +283,21 @@ export const startGroup = async (userId: string, groupId: string) => {
     memberCount: group.members.length,
     rotationOrder: group.rotationOrder,
     cycleId: cycle._id.toString()
+  });
+
+  await notifyGroupMembers({
+    group,
+    type: 'cycle_started',
+    eventName: 'cycle:started',
+    title: 'Cycle started',
+    message: `Cycle ${cycle.cycleNumber} has started.`,
+    payload: {
+      groupId: group._id.toString(),
+      cycleId: cycle._id.toString(),
+      cycleNumber: cycle.cycleNumber,
+      recipientId: cycle.recipient.toString(),
+      dueDate: cycle.dueDate
+    }
   });
 
   return {
