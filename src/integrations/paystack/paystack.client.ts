@@ -2,8 +2,14 @@ import { request } from 'undici';
 import { env } from '../../config/env';
 import type {
   PaystackApiResponse,
+  PaystackBank,
+  PaystackCreateRecipientInput,
+  PaystackInitiateTransferInput,
   PaystackInitializeTransactionData,
   PaystackInitializeTransactionInput,
+  PaystackResolvedAccount,
+  PaystackTransferData,
+  PaystackTransferRecipientData,
   PaystackVerifyTransactionData
 } from './paystack.types';
 
@@ -57,6 +63,66 @@ export const verifyPaystackTransaction = async (
     `/transaction/verify/${encodeURIComponent(reference)}`,
     { method: 'GET' }
   );
+
+  return payload.data;
+};
+
+export const listPaystackBanks = async (): Promise<PaystackBank[]> => {
+  const payload = await paystackRequest<PaystackBank[]>('/bank?country=nigeria&currency=NGN', {
+    method: 'GET'
+  });
+
+  return payload.data;
+};
+
+export const resolvePaystackAccountNumber = async (
+  accountNumber: string,
+  bankCode: string
+): Promise<PaystackResolvedAccount> => {
+  const query = new URLSearchParams({
+    account_number: accountNumber,
+    bank_code: bankCode
+  });
+
+  const payload = await paystackRequest<PaystackResolvedAccount>(`/bank/resolve?${query.toString()}`, {
+    method: 'GET'
+  });
+
+  return payload.data;
+};
+
+export const createPaystackTransferRecipient = async (
+  input: PaystackCreateRecipientInput
+): Promise<PaystackTransferRecipientData> => {
+  const payload = await paystackRequest<PaystackTransferRecipientData>('/transferrecipient', {
+    method: 'POST',
+    body: {
+      type: 'nuban',
+      name: input.name,
+      account_number: input.accountNumber,
+      bank_code: input.bankCode,
+      currency: input.currency ?? 'NGN',
+      description: input.description
+    }
+  });
+
+  return payload.data;
+};
+
+export const initiatePaystackTransfer = async (
+  input: PaystackInitiateTransferInput
+): Promise<PaystackTransferData> => {
+  const payload = await paystackRequest<PaystackTransferData>('/transfer', {
+    method: 'POST',
+    body: {
+      source: 'balance',
+      amount: input.amountKobo,
+      recipient: input.recipientCode,
+      reference: input.reference,
+      reason: input.reason,
+      currency: input.currency ?? 'NGN'
+    }
+  });
 
   return payload.data;
 };

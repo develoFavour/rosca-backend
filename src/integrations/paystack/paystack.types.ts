@@ -7,6 +7,83 @@ export type PaystackInitializeTransactionInput = {
   channels?: string[];
 };
 
+export type PaystackBank = {
+  id: number;
+  name: string;
+  slug: string;
+  code: string;
+  longcode?: string;
+  gateway?: string;
+  pay_with_bank?: boolean;
+  supports_transfer?: boolean;
+  active?: boolean;
+  country?: string;
+  currency?: string;
+  type?: string;
+  is_deleted?: boolean;
+};
+
+export type PaystackResolvedAccount = {
+  account_number: string;
+  account_name: string;
+  bank_id: number;
+};
+
+export type PaystackCreateRecipientInput = {
+  name: string;
+  accountNumber: string;
+  bankCode: string;
+  currency?: string;
+  description?: string;
+};
+
+export type PaystackTransferRecipientData = {
+  active: boolean;
+  createdAt: string;
+  currency: string;
+  domain: string;
+  id: number;
+  integration: number;
+  name: string;
+  recipient_code: string;
+  type: string;
+  updatedAt: string;
+  is_deleted: boolean;
+  details: {
+    authorization_code?: string | null;
+    account_number: string;
+    account_name?: string | null;
+    bank_code: string;
+    bank_name: string;
+  };
+};
+
+export type PaystackInitiateTransferInput = {
+  amountKobo: number;
+  recipientCode: string;
+  reference: string;
+  reason: string;
+  currency?: string;
+};
+
+export type PaystackTransferData = {
+  amount: number;
+  currency: string;
+  domain: string;
+  failures: unknown;
+  id: number;
+  integration: number;
+  reason: string;
+  reference: string;
+  source: string;
+  source_details: unknown;
+  status: 'pending' | 'success' | 'failed' | 'otp' | 'queued' | 'reversed';
+  titan_code?: string | null;
+  transfer_code: string;
+  transferred_at?: string | null;
+  recipient: number | string | PaystackTransferRecipientData;
+};
+
 export type PaystackInitializeTransactionData = {
   authorization_url: string;
   access_code: string;
