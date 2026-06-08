@@ -10,48 +10,48 @@ export const registerSchema = z.object({
     email,
     phone: z.string().trim().min(7).max(20),
     password
-  })
-});
+  }).strict()
+}).strict();
 
 export const verifyOtpSchema = z.object({
   body: z.object({
     email,
     otpCode
-  })
-});
+  }).strict()
+}).strict();
 
 export const loginSchema = z.object({
   body: z.object({
     email,
     password
-  })
-});
+  }).strict()
+}).strict();
 
 export const refreshSchema = z.object({
   body: z.object({
     refreshToken: z.string().min(20).optional()
-  }).optional()
-});
+  }).strict().optional()
+}).strict();
 
 export const resendOtpSchema = z.object({
   body: z.object({
     email
-  })
-});
+  }).strict()
+}).strict();
 
 export const forgotPasswordSchema = z.object({
   body: z.object({
     email
-  })
-});
+  }).strict()
+}).strict();
 
 export const resetPasswordSchema = z.object({
   body: z.object({
     email,
     otpCode,
     newPassword: password
-  })
-});
+  }).strict()
+}).strict();
 
 export type RegisterInput = z.infer<typeof registerSchema>['body'];
 export type VerifyOtpInput = z.infer<typeof verifyOtpSchema>['body'];
