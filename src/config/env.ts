@@ -33,7 +33,8 @@ const envSchema = z.object({
   PAYSTACK_PUBLIC_KEY: z.string().min(1).default('pk_test_replace_with_paystack_public'),
   PAYSTACK_BASE_URL: z.string().url().default('https://api.paystack.co'),
   PAYSTACK_CALLBACK_URL: z.string().url().optional(),
-  PAYSTACK_WEBHOOK_IP_WHITELIST_ENABLED: booleanFromEnv.default(false)
+  PAYSTACK_WEBHOOK_IP_WHITELIST_ENABLED: booleanFromEnv.default(false),
+  PAYOUT_TRANSFER_MODE: z.enum(['paystack', 'simulate']).default('simulate')
 }).superRefine((value, ctx) => {
   if (value.NODE_ENV !== 'production') return;
 
@@ -91,5 +92,6 @@ export const env = {
   paystackPublicKey: parsed.data.PAYSTACK_PUBLIC_KEY,
   paystackBaseUrl: parsed.data.PAYSTACK_BASE_URL,
   paystackCallbackUrl: parsed.data.PAYSTACK_CALLBACK_URL,
-  paystackWebhookIpWhitelistEnabled: parsed.data.PAYSTACK_WEBHOOK_IP_WHITELIST_ENABLED
+  paystackWebhookIpWhitelistEnabled: parsed.data.PAYSTACK_WEBHOOK_IP_WHITELIST_ENABLED,
+  payoutTransferMode: parsed.data.PAYOUT_TRANSFER_MODE
 } as const;

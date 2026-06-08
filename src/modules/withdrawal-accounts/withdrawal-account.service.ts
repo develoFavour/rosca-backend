@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { notFound } from '../../common/http/api-error';
+import { badRequest, notFound } from '../../common/http/api-error';
 import {
   createPaystackTransferRecipient,
   listPaystackBanks,
@@ -9,6 +9,9 @@ import { WithdrawalAccountModel, type WithdrawalAccountDocument } from './withdr
 import type { CreateWithdrawalAccountInput, ResolveWithdrawalAccountInput } from './withdrawal-account.schemas';
 
 const toObjectId = (id: string): Types.ObjectId => new Types.ObjectId(id);
+
+const paystackMessage = (error: unknown, fallback: string): string =>
+  error instanceof Error && error.message ? error.message : fallback;
 
 export const serializeWithdrawalAccount = (account: WithdrawalAccountDocument) => ({
   id: account._id.toString(),
@@ -29,7 +32,7 @@ export const listBanks = async () => {
   const banks = await listPaystackBanks();
 
   return banks
-    .filter((bank) => bank.active !== false)
+    .filter((bank) => bank.active !== false && bank.supports_transfer !== false)
     .map((bank) => ({
       name: bank.name,
       code: bank.code,
@@ -40,7 +43,13 @@ export const listBanks = async () => {
 };
 
 export const resolveWithdrawalAccount = async (input: ResolveWithdrawalAccountInput) => {
-  const resolved = await resolvePaystackAccountNumber(input.accountNumber, input.bankCode);
+  let resolved;
+
+  try {
+    resolved = await resolvePaystackAccountNumber(input.accountNumber, input.bankCode);
+  } catch (error) {
+    throw badRequest(paystackMessage(error, 'Unable to resolve withdrawal account.'));
+  }
 
   return {
     accountNumber: resolved.account_number,
@@ -50,14 +59,21 @@ export const resolveWithdrawalAccount = async (input: ResolveWithdrawalAccountIn
 };
 
 export const createWithdrawalAccount = async (userId: string, input: CreateWithdrawalAccountInput) => {
-  const resolved = await resolvePaystackAccountNumber(input.accountNumber, input.bankCode);
-  const recipient = await createPaystackTransferRecipient({
-    name: resolved.account_name,
-    accountNumber: resolved.account_number,
-    bankCode: input.bankCode,
-    currency: 'NGN',
-    description: 'AjoSave payout withdrawal account'
-  });
+  let resolved;
+  let recipient;
+
+  try {
+    resolved = await resolvePaystackAccountNumber(input.accountNumber, input.bankCode);
+    recipient = await createPaystackTransferRecipient({
+      name: resolved.account_name,
+      accountNumber: resolved.account_number,
+      bankCode: input.bankCode,
+      currency: 'NGN',
+      description: 'AjoSave payout withdrawal account'
+    });
+  } catch (error) {
+    throw badRequest(paystackMessage(error, 'Unable to create Paystack transfer recipient for this account.'));
+  }
 
   await WithdrawalAccountModel.updateMany({
     user: userId

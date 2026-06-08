@@ -1,7 +1,9 @@
 import crypto from 'node:crypto';
 import { Types } from 'mongoose';
 import { badRequest, conflict, forbidden, notFound } from '../../common/http/api-error';
+import { env } from '../../config/env';
 import { initiatePaystackTransfer } from '../../integrations/paystack/paystack.client';
+import type { PaystackTransferData } from '../../integrations/paystack/paystack.types';
 import { createCycleForGroup, getCurrentCycleForGroup, serializeCycle } from '../cycles/cycle.service';
 import { GroupModel, type GroupDocument } from '../groups/group.model';
 import { notifyGroupMembers } from '../notifications/notification.service';
@@ -42,6 +44,31 @@ const transferStatusToPayoutStatus = (status: string) => {
 
 const generateTransferReference = (payoutId: string): string =>
   `ajo-payout-${payoutId.slice(-12)}-${crypto.randomBytes(4).toString('hex')}`;
+
+const integrationMessage = (error: unknown, fallback: string): string =>
+  error instanceof Error && error.message ? error.message : fallback;
+
+const simulateTransfer = (
+  payout: PayoutDocument,
+  reference: string,
+  recipientCode: string
+): PaystackTransferData => ({
+  amount: payout.amount * 100,
+  currency: 'NGN',
+  domain: 'test',
+  failures: null,
+  id: Date.now(),
+  integration: 0,
+  reason: `Simulated AjoSave payout for cycle ${payout.cycle.toString()}`,
+  reference,
+  source: 'balance',
+  source_details: null,
+  status: 'success',
+  titan_code: null,
+  transfer_code: `SIM_${payout._id.toString().slice(-12)}`,
+  transferred_at: new Date().toISOString(),
+  recipient: recipientCode
+});
 
 export const serializePayout = (payout: PayoutDocument) => ({
   id: payout._id.toString(),
@@ -167,12 +194,22 @@ export const approvePayout = async (adminId: string, payoutId: string) => {
 
   const withdrawalAccount = await getDefaultWithdrawalAccountDocument(payout.recipient.toString());
   const reference = generateTransferReference(payout._id.toString());
-  const transfer = await initiatePaystackTransfer({
-    amountKobo: payout.amount * 100,
-    recipientCode: withdrawalAccount.recipientCode,
-    reference,
-    reason: `AjoSave payout for cycle ${payout.cycle.toString()}`
-  });
+  let transfer: PaystackTransferData;
+
+  if (env.payoutTransferMode === 'simulate') {
+    transfer = simulateTransfer(payout, reference, withdrawalAccount.recipientCode);
+  } else {
+    try {
+      transfer = await initiatePaystackTransfer({
+        amountKobo: payout.amount * 100,
+        recipientCode: withdrawalAccount.recipientCode,
+        reference,
+        reason: `AjoSave payout for cycle ${payout.cycle.toString()}`
+      });
+    } catch (error) {
+      throw badRequest(integrationMessage(error, 'Unable to initiate Paystack payout transfer.'));
+    }
+  }
 
   payout.status = transferStatusToPayoutStatus(transfer.status);
   payout.processedAt = new Date();
