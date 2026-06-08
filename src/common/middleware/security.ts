@@ -34,7 +34,7 @@ const createAuthLimiter = (scope: string, max: number, windowMs: number) => rate
 
 export const authIpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: env.isProduction ? 30 : 300,
   skip: () => env.isTest,
   standardHeaders: true,
   legacyHeaders: false,
@@ -76,10 +76,11 @@ export const applySecurityMiddleware = (app: Express): void => {
   app.use(cookieParser(env.cookieSecret));
   app.use(rateLimit({
     windowMs: env.rateLimitWindowMinutes * 60 * 1000,
-    max: env.rateLimitMax,
+    max: env.isProduction ? env.rateLimitMax : Math.max(env.rateLimitMax, 2000),
     skip: () => env.isTest,
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
+    message: rateLimitMessage
   }));
   app.use((req, _res, next) => {
     if (req.body) req.body = sanitizeNoSqlOperators(req.body);

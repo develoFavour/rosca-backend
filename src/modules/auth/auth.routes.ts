@@ -28,7 +28,7 @@ authRouter.post('/register', validateRequest(registerSchema), authController.reg
 authRouter.post('/verify-otp', verifyOtpLimiter, validateRequest(verifyOtpSchema), authController.verifyOtp);
 authRouter.post('/login', loginLimiter, validateRequest(loginSchema), authController.login);
 authRouter.post('/refresh', validateRequest(refreshSchema), authController.refresh);
-authRouter.post('/logout', requireAuth, authController.logout);
+authRouter.post('/logout', authController.logout);
 authRouter.get('/me', requireAuth, authController.me);
 authRouter.post('/resend-otp', resendOtpLimiter, validateRequest(resendOtpSchema), authController.resendOtp);
 authRouter.post('/forgot-password', forgotPasswordLimiter, validateRequest(forgotPasswordSchema), authController.forgotPassword);

@@ -247,7 +247,17 @@ export const refresh = async (refreshToken: string | undefined): Promise<{
 export const logout = async (userId: string, refreshToken: string | undefined): Promise<void> => {
   if (!refreshToken) return;
 
-  const user = await UserModel.findById(userId).select('+refreshTokens');
+  let resolvedUserId = userId;
+
+  if (!resolvedUserId) {
+    try {
+      resolvedUserId = verifyRefreshToken(refreshToken).userId;
+    } catch {
+      return;
+    }
+  }
+
+  const user = await UserModel.findById(resolvedUserId).select('+refreshTokens');
   if (!user) return;
 
   const tokenHash = sha256(refreshToken);
