@@ -4,6 +4,7 @@ import { badRequest, conflict, forbidden, notFound } from '../../common/http/api
 import { initiatePaystackTransfer } from '../../integrations/paystack/paystack.client';
 import { createCycleForGroup, getCurrentCycleForGroup, serializeCycle } from '../cycles/cycle.service';
 import { GroupModel, type GroupDocument } from '../groups/group.model';
+import { notifyGroupMembers } from '../notifications/notification.service';
 import { getDefaultWithdrawalAccountDocument, serializeWithdrawalAccount } from '../withdrawal-accounts/withdrawal-account.service';
 import { PayoutModel, type PayoutDocument } from './payout.model';
 import type { PayoutPaginationQuery } from './payout.schemas';
@@ -125,6 +126,21 @@ export const requestPayout = async (userId: string, groupId: string) => {
     requestedAt: new Date()
   });
 
+  await notifyGroupMembers({
+    group,
+    type: 'payout_requested',
+    eventName: 'payout:requested',
+    title: 'Payout requested',
+    message: 'The cycle recipient has requested payout approval.',
+    payload: {
+      payoutId: payout._id.toString(),
+      groupId: group._id.toString(),
+      cycleId: cycle._id.toString(),
+      recipientId: userId,
+      amount: payout.amount
+    }
+  });
+
   return {
     payout: serializePayout(payout),
     withdrawalAccount: serializeWithdrawalAccount(withdrawalAccount)
@@ -171,6 +187,42 @@ export const approvePayout = async (adminId: string, payoutId: string) => {
     ? await advanceAfterDisbursement(group, payout)
     : { nextCycle: undefined, groupCompleted: false };
 
+  await notifyGroupMembers({
+    group,
+    type: payout.status === 'disbursed' ? 'payout_disbursed' : 'payout_approved',
+    eventName: 'payout:approved',
+    title: payout.status === 'disbursed' ? 'Payout disbursed' : 'Payout approved',
+    message: payout.status === 'disbursed'
+      ? 'The recipient payout has been sent through Paystack.'
+      : 'The payout was approved and is being processed by Paystack.',
+    payload: {
+      payoutId: payout._id.toString(),
+      groupId: group._id.toString(),
+      cycleId: payout.cycle.toString(),
+      recipientId: payout.recipient.toString(),
+      amount: payout.amount,
+      status: payout.status,
+      transferReference: payout.transferReference
+    }
+  });
+
+  if (advance.nextCycle) {
+    await notifyGroupMembers({
+      group,
+      type: 'cycle_started',
+      eventName: 'cycle:started',
+      title: 'Next cycle started',
+      message: `Cycle ${advance.nextCycle.cycleNumber} has started.`,
+      payload: {
+        groupId: group._id.toString(),
+        cycleId: advance.nextCycle.id,
+        cycleNumber: advance.nextCycle.cycleNumber,
+        recipientId: advance.nextCycle.recipient,
+        dueDate: advance.nextCycle.dueDate
+      }
+    });
+  }
+
   return {
     payout: serializePayout(payout),
     transfer,
@@ -195,6 +247,21 @@ export const rejectPayout = async (adminId: string, payoutId: string, notes: str
   payout.processedAt = new Date();
   payout.processedBy = toObjectId(adminId);
   await payout.save();
+
+  await notifyGroupMembers({
+    group,
+    type: 'payout_rejected',
+    eventName: 'payout:rejected',
+    title: 'Payout rejected',
+    message: 'The payout request was rejected by the group admin.',
+    payload: {
+      payoutId: payout._id.toString(),
+      groupId: group._id.toString(),
+      cycleId: payout.cycle.toString(),
+      recipientId: payout.recipient.toString(),
+      reason: notes
+    }
+  });
 
   return serializePayout(payout);
 };
