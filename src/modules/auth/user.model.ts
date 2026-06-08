@@ -33,7 +33,6 @@ const userSchema = new Schema<User>({
     type: String,
     required: true,
     unique: true,
-    index: true,
     lowercase: true,
     trim: true
   },
@@ -41,7 +40,6 @@ const userSchema = new Schema<User>({
     type: String,
     required: true,
     unique: true,
-    index: true,
     trim: true
   },
   passwordHash: {
