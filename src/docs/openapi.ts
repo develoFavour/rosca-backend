@@ -666,6 +666,44 @@ export const openApiSpec = {
           403: { description: 'Only admin can reject payout' }
         }
       }
+    },
+    '/notifications': {
+      get: {
+        tags: ['Notifications'],
+        summary: 'List authenticated user notifications',
+        description: 'Returns persisted notifications so users who were offline can catch up after reconnecting.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+          { name: 'unreadOnly', in: 'query', schema: { type: 'boolean', default: false } }
+        ],
+        responses: {
+          200: {
+            description: 'Notifications retrieved',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/NotificationListResponse' }
+              }
+            }
+          },
+          401: { description: 'Access token missing or invalid' },
+          403: { description: 'Account is not verified' }
+        }
+      }
+    },
+    '/notifications/{notificationId}/read': {
+      patch: {
+        tags: ['Notifications'],
+        summary: 'Mark a notification as read',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/NotificationId' }],
+        responses: {
+          200: { description: 'Notification marked as read' },
+          403: { description: 'User does not own this notification' },
+          404: { description: 'Notification not found' }
+        }
+      }
     }
   },
   components: {
@@ -706,6 +744,15 @@ export const openApiSpec = {
       },
       PayoutId: {
         name: 'payoutId',
+        in: 'path',
+        required: true,
+        schema: {
+          type: 'string',
+          pattern: '^[a-f\\d]{24}$'
+        }
+      },
+      NotificationId: {
+        name: 'notificationId',
         in: 'path',
         required: true,
         schema: {
@@ -836,6 +883,58 @@ export const openApiSpec = {
         required: ['notes'],
         properties: {
           notes: { type: 'string', minLength: 2, maxLength: 500 }
+        }
+      },
+      Notification: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          user: { type: 'string' },
+          group: { type: 'string' },
+          type: {
+            type: 'string',
+            enum: [
+              'member_joined',
+              'cycle_started',
+              'contribution_new',
+              'contribution_confirmed',
+              'cycle_closed',
+              'payout_requested',
+              'payout_approved',
+              'payout_rejected',
+              'payout_disbursed'
+            ]
+          },
+          title: { type: 'string' },
+          message: { type: 'string' },
+          payload: { type: 'object', additionalProperties: true },
+          readAt: { type: 'string', format: 'date-time', nullable: true },
+          createdAt: { type: 'string', format: 'date-time' }
+        }
+      },
+      NotificationListResponse: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          message: { type: 'string' },
+          data: {
+            type: 'object',
+            properties: {
+              notifications: {
+                type: 'array',
+                items: { $ref: '#/components/schemas/Notification' }
+              }
+            }
+          },
+          meta: {
+            type: 'object',
+            properties: {
+              page: { type: 'integer' },
+              limit: { type: 'integer' },
+              total: { type: 'integer' },
+              totalPages: { type: 'integer' }
+            }
+          }
         }
       }
     }
