@@ -1,0 +1,56 @@
+services:
+  - type: web
+    name: ajosave-api
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_BASE_URL
+        sync: false
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: JWT_ACCESS_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
+      - key: COOKIE_SECRET
+        sync: false
+      - key: BCRYPT_SALT_ROUNDS
+        value: 12
+      - key: OTP_TTL_MINUTES
+        value: 10
+      - key: OTP_DEV_MODE
+        value: false
+      - key: RATE_LIMIT_WINDOW_MINUTES
+        value: 15
+      - key: RATE_LIMIT_MAX
+        value: 150
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_EMAIL
+        sync: false
+      - key: BREVO_SENDER_NAME
+        value: AjoSave
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_PUBLIC_KEY
+        sync: false
+      - key: PAYSTACK_BASE_URL
+        value: https://api.paystack.co
+      - key: PAYSTACK_CALLBACK_URL
+        sync: false
+      - key: PAYSTACK_WEBHOOK_IP_WHITELIST_ENABLED
+        value: false
+      - key: PAYOUT_TRANSFER_MODE
+        value: simulate
