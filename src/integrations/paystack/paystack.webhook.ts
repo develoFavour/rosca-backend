@@ -54,16 +54,24 @@ paystackWebhookRouter.post('/', async (req, res) => {
   }
 
   if (event.event === 'charge.success') {
-    const transaction = await verifyPaystackTransaction(event.data.reference);
-    const result = await fulfillContributionPayment(transaction.reference, transaction);
+    try {
+      const transaction = await verifyPaystackTransaction(event.data.reference);
+      const result = await fulfillContributionPayment(transaction.reference, transaction);
 
-    logger.info({
-      reference: transaction.reference,
-      status: transaction.status,
-      amount: transaction.amount,
-      contributionId: result.contribution?.id,
-      alreadyFulfilled: result.alreadyFulfilled
-    }, 'Fulfilled Paystack charge.success webhook');
+      logger.info({
+        reference: transaction.reference,
+        status: transaction.status,
+        amount: transaction.amount,
+        contributionId: result.contribution?.id,
+        alreadyFulfilled: result.alreadyFulfilled
+      }, 'Fulfilled Paystack charge.success webhook');
+    } catch (error) {
+      logger.error({
+        err: error,
+        reference: event.data.reference
+      }, 'Failed to fulfill Paystack charge.success webhook');
+      return res.sendStatus(500);
+    }
   }
 
   return res.sendStatus(200);
