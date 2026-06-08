@@ -39,6 +39,22 @@
     {
       "key": "contributionId",
       "value": ""
+    },
+    {
+      "key": "bankCode",
+      "value": "058"
+    },
+    {
+      "key": "bankName",
+      "value": "Guaranty Trust Bank"
+    },
+    {
+      "key": "accountNumber",
+      "value": "0000000000"
+    },
+    {
+      "key": "payoutId",
+      "value": ""
     }
   ],
   "item": [
@@ -660,8 +676,216 @@
     },
     {
       "name": "Payouts",
-      "description": "Payout request, approval, rejection, and cycle advancement endpoints will be added in Phase 4.",
-      "item": []
+      "description": "Withdrawal account setup and manual payout approval through Paystack transfers.",
+      "item": [
+        {
+          "name": "List Banks",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/withdrawal-accounts/banks"
+          }
+        },
+        {
+          "name": "Resolve Withdrawal Account",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/withdrawal-accounts/resolve",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountNumber\": \"{{accountNumber}}\",\n  \"bankCode\": \"{{bankCode}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Save Withdrawal Account",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/withdrawal-accounts",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountNumber\": \"{{accountNumber}}\",\n  \"bankCode\": \"{{bankCode}}\",\n  \"bankName\": \"{{bankName}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get My Withdrawal Account",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/withdrawal-accounts/me"
+          }
+        },
+        {
+          "name": "Request Payout",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/payouts/request",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"groupId\": \"{{groupId}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.payout) {",
+                  "  pm.collectionVariables.set('payoutId', json.data.payout.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approve Payout",
+          "request": {
+            "method": "PATCH",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/payouts/{{payoutId}}/approve"
+          }
+        },
+        {
+          "name": "Reject Payout",
+          "request": {
+            "method": "PATCH",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/payouts/{{payoutId}}/reject",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Recipient needs to update withdrawal account first.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Payout",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/payouts/{{payoutId}}"
+          }
+        },
+        {
+          "name": "List Group Payouts",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/payouts/group/{{groupId}}?page=1&limit=20"
+          }
+        }
+      ]
     },
     {
       "name": "Notifications",

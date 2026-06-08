@@ -525,6 +525,147 @@ export const openApiSpec = {
           403: { description: 'User is not a group member' }
         }
       }
+    },
+    '/withdrawal-accounts/banks': {
+      get: {
+        tags: ['Payouts'],
+        summary: 'List Nigerian banks supported by Paystack transfers',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: 'Banks retrieved' }
+        }
+      }
+    },
+    '/withdrawal-accounts/resolve': {
+      post: {
+        tags: ['Payouts'],
+        summary: 'Resolve a bank account number before saving payout destination',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ResolveWithdrawalAccountRequest' },
+              example: { accountNumber: '0000000000', bankCode: '058' }
+            }
+          }
+        },
+        responses: {
+          200: { description: 'Account resolved' }
+        }
+      }
+    },
+    '/withdrawal-accounts': {
+      post: {
+        tags: ['Payouts'],
+        summary: 'Save default withdrawal account and create Paystack transfer recipient',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/CreateWithdrawalAccountRequest' },
+              example: { accountNumber: '0000000000', bankCode: '058', bankName: 'Guaranty Trust Bank' }
+            }
+          }
+        },
+        responses: {
+          201: { description: 'Withdrawal account saved' }
+        }
+      }
+    },
+    '/withdrawal-accounts/me': {
+      get: {
+        tags: ['Payouts'],
+        summary: 'Get authenticated user default withdrawal account',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: 'Withdrawal account retrieved' },
+          404: { description: 'No withdrawal account found' }
+        }
+      }
+    },
+    '/payouts/request': {
+      post: {
+        tags: ['Payouts'],
+        summary: 'Cycle recipient requests payout after cycle closes',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/RequestPayoutRequest' },
+              example: { groupId: '665f1f1f1f1f1f1f1f1f1f1f' }
+            }
+          }
+        },
+        responses: {
+          201: { description: 'Payout requested' },
+          400: { description: 'Cycle is not closed' },
+          403: { description: 'Only assigned recipient can request payout' },
+          409: { description: 'Payout already requested for cycle' }
+        }
+      }
+    },
+    '/payouts/group/{groupId}': {
+      get: {
+        tags: ['Payouts'],
+        summary: 'List group payout history',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { $ref: '#/components/parameters/GroupId' },
+          { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } }
+        ],
+        responses: {
+          200: { description: 'Group payouts retrieved' }
+        }
+      }
+    },
+    '/payouts/{payoutId}': {
+      get: {
+        tags: ['Payouts'],
+        summary: 'Get payout details',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/PayoutId' }],
+        responses: {
+          200: { description: 'Payout retrieved' },
+          404: { description: 'Payout not found' }
+        }
+      }
+    },
+    '/payouts/{payoutId}/approve': {
+      patch: {
+        tags: ['Payouts'],
+        summary: 'Admin approves payout and initiates Paystack transfer',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/PayoutId' }],
+        responses: {
+          200: { description: 'Payout approved and transfer initiated' },
+          403: { description: 'Only admin can approve payout' }
+        }
+      }
+    },
+    '/payouts/{payoutId}/reject': {
+      patch: {
+        tags: ['Payouts'],
+        summary: 'Admin rejects payout with notes',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/PayoutId' }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/RejectPayoutRequest' },
+              example: { notes: 'Recipient requested to update withdrawal account first.' }
+            }
+          }
+        },
+        responses: {
+          200: { description: 'Payout rejected' },
+          403: { description: 'Only admin can reject payout' }
+        }
+      }
     }
   },
   components: {
@@ -556,6 +697,15 @@ export const openApiSpec = {
       },
       ContributionId: {
         name: 'contribId',
+        in: 'path',
+        required: true,
+        schema: {
+          type: 'string',
+          pattern: '^[a-f\\d]{24}$'
+        }
+      },
+      PayoutId: {
+        name: 'payoutId',
         in: 'path',
         required: true,
         schema: {
@@ -655,6 +805,37 @@ export const openApiSpec = {
         required: ['reference'],
         properties: {
           reference: { type: 'string', minLength: 8, maxLength: 120 }
+        }
+      },
+      ResolveWithdrawalAccountRequest: {
+        type: 'object',
+        required: ['accountNumber', 'bankCode'],
+        properties: {
+          accountNumber: { type: 'string', pattern: '^\\d{10}$' },
+          bankCode: { type: 'string' }
+        }
+      },
+      CreateWithdrawalAccountRequest: {
+        type: 'object',
+        required: ['accountNumber', 'bankCode', 'bankName'],
+        properties: {
+          accountNumber: { type: 'string', pattern: '^\\d{10}$' },
+          bankCode: { type: 'string' },
+          bankName: { type: 'string' }
+        }
+      },
+      RequestPayoutRequest: {
+        type: 'object',
+        required: ['groupId'],
+        properties: {
+          groupId: { type: 'string', pattern: '^[a-f\\d]{24}$' }
+        }
+      },
+      RejectPayoutRequest: {
+        type: 'object',
+        required: ['notes'],
+        properties: {
+          notes: { type: 'string', minLength: 2, maxLength: 500 }
         }
       }
     }
