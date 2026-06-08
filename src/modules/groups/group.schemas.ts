@@ -10,8 +10,8 @@ export const createGroupSchema = z.object({
     frequency: z.enum(['daily', 'weekly', 'monthly']),
     maxMembers: z.number().int().min(2).max(100),
     rotationOrder: z.enum(['sequential', 'random', 'bidding']).default('sequential')
-  })
-});
+  }).strict()
+}).strict();
 
 export const updateGroupSchema = z.object({
   params: z.object({
@@ -24,22 +24,22 @@ export const updateGroupSchema = z.object({
     frequency: z.enum(['daily', 'weekly', 'monthly']).optional(),
     maxMembers: z.number().int().min(2).max(100).optional(),
     rotationOrder: z.enum(['sequential', 'random', 'bidding']).optional()
-  }).refine((value) => Object.keys(value).length > 0, {
+  }).strict().refine((value) => Object.keys(value).length > 0, {
     message: 'At least one field is required'
   })
-});
+}).strict();
 
 export const groupIdParamSchema = z.object({
   params: z.object({
     groupId: objectId
-  })
-});
+  }).strict()
+}).strict();
 
 export const joinGroupSchema = z.object({
   body: z.object({
     inviteCode: z.string().trim().min(6).max(12).transform((value) => value.toUpperCase())
-  })
-});
+  }).strict()
+}).strict();
 
 export const activityQuerySchema = z.object({
   params: z.object({
@@ -48,8 +48,8 @@ export const activityQuerySchema = z.object({
   query: z.object({
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(100).default(20)
-  })
-});
+  }).strict()
+}).strict();
 
 export type CreateGroupInput = z.infer<typeof createGroupSchema>['body'];
 export type UpdateGroupInput = z.infer<typeof updateGroupSchema>['body'];
