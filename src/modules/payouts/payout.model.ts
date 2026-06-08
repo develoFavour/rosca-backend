@@ -31,8 +31,7 @@ const payoutSchema = new Schema<Payout>({
   cycle: {
     type: Schema.Types.ObjectId,
     ref: 'Cycle',
-    required: true,
-    index: true
+    required: true
   },
   recipient: {
     type: Schema.Types.ObjectId,
