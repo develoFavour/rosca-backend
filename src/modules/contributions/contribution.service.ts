@@ -14,6 +14,19 @@ import type { PaginatedQuery } from './contribution.schemas';
 
 const toObjectId = (id: string): Types.ObjectId => new Types.ObjectId(id);
 
+type PublicContributionUser = {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  role: 'user' | 'admin';
+  isVerified: boolean;
+};
+
+type LeanPublicUser = Omit<PublicContributionUser, 'id'> & {
+  _id: Types.ObjectId;
+};
+
 const isMember = (group: GroupDocument, userId: string): boolean =>
   group.members.some((member) => member.user.toString() === userId);
 
@@ -67,6 +80,23 @@ const serializePayment = (payment: PaymentTransactionDocument) => ({
   providerStatus: payment.providerStatus,
   contribution: payment.contribution?.toString()
 });
+
+const serializePublicUser = (user: LeanPublicUser): PublicContributionUser => ({
+  id: user._id.toString(),
+  fullName: user.fullName,
+  email: user.email,
+  phone: user.phone,
+  role: user.role,
+  isVerified: user.isVerified
+});
+
+const getPublicUsersById = async (userIds: string[]): Promise<Map<string, PublicContributionUser>> => {
+  const users = await UserModel.find({ _id: { $in: [...new Set(userIds)] } })
+    .select('fullName email phone role isVerified')
+    .lean<LeanPublicUser[]>();
+
+  return new Map(users.map((user) => [user._id.toString(), serializePublicUser(user)]));
+};
 
 const generatePaymentReference = (groupId: string, cycleId: string, userId: string): string => {
   const suffix = crypto.randomBytes(6).toString('hex').toUpperCase();
@@ -309,14 +339,19 @@ export const getContributionStatus = async (userId: string, groupId: string) => 
   const cycle = await getCurrentCycleForGroup(groupId);
   const contributions = await ContributionModel.find({ cycle: cycle._id });
   const paidMemberIds = new Set(contributions.map((contribution) => contribution.member.toString()));
+  const usersById = await getPublicUsersById([
+    cycle.recipient.toString(),
+    ...group.members.map((member) => member.user.toString())
+  ]);
 
   return {
     cycle: serializeCycle(cycle),
+    recipient: usersById.get(cycle.recipient.toString()) ?? cycle.recipient.toString(),
     members: group.members.map((member) => {
       const contribution = contributions.find((item) => item.member.toString() === member.user.toString());
 
       return {
-        user: member.user.toString(),
+        user: usersById.get(member.user.toString()) ?? member.user.toString(),
         slotPosition: member.slotPosition,
         hasPaid: paidMemberIds.has(member.user.toString()),
         contribution: contribution ? serializeContribution(contribution) : undefined

@@ -11,6 +11,21 @@ import type { ActivityQuery, CreateGroupInput, UpdateGroupInput } from './group.
 
 const toObjectId = (id: string): Types.ObjectId => new Types.ObjectId(id);
 
+type PublicGroupUser = {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  role: 'user' | 'admin';
+  isVerified: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
+type LeanPublicUser = Omit<PublicGroupUser, 'id'> & {
+  _id: Types.ObjectId;
+};
+
 const isSameId = (left: Types.ObjectId, right: string): boolean => left.toString() === right;
 
 const isMember = (group: GroupDocument, userId: string): boolean =>
@@ -44,30 +59,57 @@ const createUniqueInviteCode = async (): Promise<string> => {
   throw new Error('Unable to generate unique invite code');
 };
 
-const serializeMember = (member: GroupMember) => ({
-  user: member.user.toString(),
+const serializePublicUser = (user: LeanPublicUser): PublicGroupUser => ({
+  id: user._id.toString(),
+  fullName: user.fullName,
+  email: user.email,
+  phone: user.phone,
+  role: user.role,
+  isVerified: user.isVerified,
+  createdAt: user.createdAt,
+  updatedAt: user.updatedAt
+});
+
+const getPublicUsersById = async (userIds: string[]): Promise<Map<string, PublicGroupUser>> => {
+  const uniqueIds = [...new Set(userIds)];
+  const users = await UserModel.find({ _id: { $in: uniqueIds } })
+    .select('fullName email phone role isVerified createdAt updatedAt')
+    .lean<LeanPublicUser[]>();
+
+  return new Map(users.map((user) => [user._id.toString(), serializePublicUser(user)]));
+};
+
+const serializeMember = (member: GroupMember, usersById: Map<string, PublicGroupUser>) => ({
+  user: usersById.get(member.user.toString()) ?? member.user.toString(),
   slotPosition: member.slotPosition,
   hasReceivedPayout: member.hasReceivedPayout,
   joinedAt: member.joinedAt
 });
 
-const serializeGroup = (group: GroupDocument) => ({
-  id: group._id.toString(),
-  name: group.name,
-  description: group.description,
-  admin: group.admin.toString(),
-  members: group.members.map(serializeMember),
-  contributionAmount: group.contributionAmount,
-  frequency: group.frequency,
-  maxMembers: group.maxMembers,
-  inviteCode: group.inviteCode,
-  status: group.status,
-  currentCycle: group.currentCycle?.toString(),
-  rotationOrder: group.rotationOrder,
-  startDate: group.startDate,
-  createdAt: group.createdAt,
-  updatedAt: group.updatedAt
-});
+const serializeGroup = async (group: GroupDocument) => {
+  const usersById = await getPublicUsersById([
+    group.admin.toString(),
+    ...group.members.map((member) => member.user.toString())
+  ]);
+
+  return {
+    id: group._id.toString(),
+    name: group.name,
+    description: group.description,
+    admin: usersById.get(group.admin.toString()) ?? group.admin.toString(),
+    members: group.members.map((member) => serializeMember(member, usersById)),
+    contributionAmount: group.contributionAmount,
+    frequency: group.frequency,
+    maxMembers: group.maxMembers,
+    inviteCode: group.inviteCode,
+    status: group.status,
+    currentCycle: group.currentCycle?.toString(),
+    rotationOrder: group.rotationOrder,
+    startDate: group.startDate,
+    createdAt: group.createdAt,
+    updatedAt: group.updatedAt
+  };
+};
 
 const getGroupOrThrow = async (groupId: string): Promise<GroupDocument> => {
   const group = await GroupModel.findOne({
@@ -129,7 +171,7 @@ export const listMyGroups = async (userId: string) => {
     'members.user': userId
   }).sort({ createdAt: -1 });
 
-  return groups.map(serializeGroup);
+  return Promise.all(groups.map(serializeGroup));
 };
 
 export const getGroupDetails = async (userId: string, groupId: string) => {
@@ -301,7 +343,7 @@ export const startGroup = async (userId: string, groupId: string) => {
   });
 
   return {
-    group: serializeGroup(group),
+    group: await serializeGroup(group),
     cycle: serializeCycle(cycle)
   };
 };
@@ -309,7 +351,8 @@ export const startGroup = async (userId: string, groupId: string) => {
 export const listMembers = async (userId: string, groupId: string) => {
   const group = await getGroupOrThrow(groupId);
   assertMember(group, userId);
-  return group.members.map(serializeMember);
+  const usersById = await getPublicUsersById(group.members.map((member) => member.user.toString()));
+  return group.members.map((member) => serializeMember(member, usersById));
 };
 
 export const listActivity = async (userId: string, groupId: string, query: ActivityQuery) => {
