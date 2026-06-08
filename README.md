@@ -82,6 +82,12 @@ Sensitive auth routes use layered rate limiting:
 
 This protects both against noisy clients from one IP and targeted brute-force attempts against a specific account.
 
+## Security Posture
+
+AjoSave treats the ROSCA workflow like a financial state machine. Sensitive operations are protected by JWT auth, verified-account guards, strict request validation, group-scoped authorization, Paystack webhook signature verification, manual payout approval, refresh-token rotation, and hashed secrets.
+
+See `docs/SECURITY_HARDENING.md` for the threat model, CSRF/cookie posture, and production environment checklist.
+
 ## Documentation
 
 - Engineering standards: `GUIDELINES.md`
@@ -92,4 +98,5 @@ This protects both against noisy clients from one IP and targeted brute-force at
 - Frontend contribution notes: `docs/FRONTEND_CONTRIBUTION_INTEGRATION.md`
 - Frontend payout notes: `docs/FRONTEND_PAYOUT_INTEGRATION.md`
 - Frontend real-time notes: `docs/FRONTEND_REALTIME_INTEGRATION.md`
+- Security hardening notes: `docs/SECURITY_HARDENING.md`
 - Postman auth collection: `postman/ajosave-auth.postman_collection.json`
